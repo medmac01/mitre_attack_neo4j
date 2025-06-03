@@ -1,0 +1,4 @@
+stix2
+neo4j
+dotenv
+tqdm
