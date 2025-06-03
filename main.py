@@ -344,6 +344,10 @@ def load_and_ingest_stix():
                 # STIX "attack-pattern" → Neo4j :Technique
                 session.execute_write(merge_technique, obj)
 
+            elif obj_type == "campaign":
+                # STIX "campaign" → Neo4j :Campaign
+                session.execute_write(merge_campaign, obj)
+
             elif obj_type == "intrusion-set":
                 # STIX "intrusion-set" → Neo4j :Group
                 session.execute_write(merge_group, obj)
