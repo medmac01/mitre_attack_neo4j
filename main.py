@@ -237,6 +237,36 @@ def merge_campaign(tx, obj):
         aliases=aliases
     )
 
+def merge_malware(tx, obj):
+    """
+    STIX 'malware' → Neo4j :Malware
+    """
+    stix_id     = obj["id"]
+    name        = obj.get("name", "")
+    description = obj.get("description", "")
+    aliases     = obj.get("aliases", [])
+
+    # Extract MITRE Malware ID if present
+    mitre_id = extract_mitre_id(obj)
+
+    tx.run(
+        """
+        MERGE (m:Malware {stix_id: $stix_id})
+        ON CREATE SET m.mitre_id    = $mitre_id,
+                      m.name        = $name,
+                      m.description = $description,
+                      m.aliases     = $aliases
+        ON MATCH SET  m.name        = $name,
+                      m.description = $description,
+                      m.aliases     = $aliases
+        """,
+        stix_id=stix_id,
+        mitre_id=mitre_id,
+        name=name,
+        description=description,
+        aliases=aliases
+    )
+
 def merge_stix_relationship(tx, rel):
     """
     Create/merge a relationship edge between two STIX objects. 
@@ -254,6 +284,22 @@ def merge_stix_relationship(tx, rel):
                 MATCH (g:Group {stix_id: $src_ref})
                 MATCH (t:Technique {stix_id: $tgt_ref})
                 MERGE (g)-[:USES]->(t)
+                """,
+                src_ref=src_ref, tgt_ref=tgt_ref
+            )
+            tx.run(
+                """
+                MATCH (g:Group {stix_id: $src_ref})
+                MATCH (t:Tool {stix_id: $tgt_ref})
+                MERGE (g)-[:USES]->(t)
+                """,
+                src_ref=src_ref, tgt_ref=tgt_ref
+            )
+            tx.run(
+                """
+                MATCH (g:Group {stix_id: $src_ref})
+                MATCH (m:Malware {stix_id: $tgt_ref})
+                MERGE (g)-[:USES]->(m)
                 """,
                 src_ref=src_ref, tgt_ref=tgt_ref
             )
@@ -334,7 +380,7 @@ def load_and_ingest_stix():
         
         # Filter objects for node creation
         node_objects = [obj for obj in objects if obj.get("type") in 
-                       ["attack-pattern", "campaign", "intrusion-set", "tool", "course-of-action", "x-mitre-tactic"]]
+                       ["attack-pattern", "campaign", "intrusion-set", "tool", "course-of-action", "x-mitre-tactic", "malware"]]
         
         print(f"Creating {len(node_objects)} nodes...")
         for obj in tqdm(node_objects, desc="Creating nodes"):
@@ -343,6 +389,10 @@ def load_and_ingest_stix():
             if obj_type == "attack-pattern":
                 # STIX "attack-pattern" → Neo4j :Technique
                 session.execute_write(merge_technique, obj)
+
+            elif obj_type == "malware":
+                # STIX "malware" → Neo4j :Malware
+                session.execute_write(merge_malware, obj)
 
             elif obj_type == "campaign":
                 # STIX "campaign" → Neo4j :Campaign
