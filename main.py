@@ -381,7 +381,17 @@ def load_and_ingest_stix():
     """
     # 1) Read the entire STIX JSON file
     if not os.path.exists(STIX_FILE):
-        raise FileNotFoundError(f"STIX file not found at {STIX_FILE}")
+        # Download the STIX file from github if it doesn't exist
+        STIX_URL = "https://raw.githubusercontent.com/mitre/cti/master/enterprise-attack/enterprise-attack.json"
+        import requests
+        response = requests.get(STIX_URL)
+        if response.status_code == 200:
+            print(f"Downloading STIX file from {STIX_URL}...")
+            os.makedirs(os.path.dirname(STIX_FILE), exist_ok=True)
+            with open(STIX_FILE, "w", encoding="utf-8") as f:
+                f.write(response.text)
+        else:
+            raise FileNotFoundError(f"STIX file not found at {STIX_FILE}, and could not be downloaded from {STIX_URL}")
 
     with open(STIX_FILE, "r", encoding="utf-8") as f:
         stix_bundle = json.load(f)
