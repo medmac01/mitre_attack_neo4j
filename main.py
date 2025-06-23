@@ -312,6 +312,24 @@ def merge_stix_relationship(tx, rel):
                 """,
                 src_ref=src_ref, tgt_ref=tgt_ref
             )
+        elif src_ref.startswith("campaign--"):
+            tx.run(
+                """
+                MATCH (c:Campaign {stix_id: $src_ref})
+                MATCH (t:Technique {stix_id: $tgt_ref})
+                MERGE (c)-[:USES]->(t)
+                """,
+                src_ref=src_ref, tgt_ref=tgt_ref
+            )
+        elif src_ref.startswith("malware--"):
+            tx.run(
+                """
+                MATCH (m:Malware {stix_id: $src_ref})
+                MATCH (t:Technique {stix_id: $tgt_ref})
+                MERGE (m)-[:USES]->(t)
+                """,
+                src_ref=src_ref, tgt_ref=tgt_ref
+            )
 
     # 2) Mitigation → Technique
     elif rel_type == "mitigates":
