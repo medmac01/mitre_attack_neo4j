@@ -36,6 +36,8 @@ def create_constraints(session):
     session.run("CREATE CONSTRAINT IF NOT EXISTS FOR (to:Tool) REQUIRE to.stix_id IS UNIQUE;")
     session.run("CREATE CONSTRAINT IF NOT EXISTS FOR (m:Mitigation) REQUIRE m.stix_id IS UNIQUE;")
     session.run("CREATE CONSTRAINT IF NOT EXISTS FOR (ta:Tactic) REQUIRE ta.stix_id IS UNIQUE;")
+    session.run("CREATE CONSTRAINT IF NOT EXISTS FOR (c:Campaign) REQUIRE c.stix_id IS UNIQUE;")
+    session.run("CREATE CONSTRAINT IF NOT EXISTS FOR (mal:Malware) REQUIRE mal.stix_id IS UNIQUE;")
 
 
 def merge_technique(tx, obj):
