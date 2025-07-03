@@ -13,7 +13,7 @@ STIX_FILE = os.getenv("STIX_FILE", "enterprise-attack/enterprise-attack.json")
 # Neo4j connection information:
 NEO4J_URI = os.getenv("NEO4J_URI", "bolt://localhost:7687")
 NEO4J_USER = os.getenv("NEO4J_USER", "neo4j")
-NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "your_password_here")
+NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "stix2025")
 
 def extract_mitre_id(stix_obj):
     """
@@ -51,6 +51,22 @@ def merge_technique(tx, obj):
 
     # Extract MITRE ID from external_references (e.g. "T1059", "T1059.001")
     mitre_id = extract_mitre_id(obj)
+
+    # Extract parent tactic IDs from kill_chain_phases
+    parent_tactic_ids = []
+    parent_tactic_orders = []
+    tactic_order_map = get_tactic_kill_chain_order()
+    
+    for phase in obj.get("kill_chain_phases", []):
+        tactic_short = phase.get("phase_name", "")
+        if tactic_short:
+            parent_tactic_ids.append(tactic_short)
+            # Get the order number for this tactic (default to 999 if not found)
+            order = tactic_order_map.get(tactic_short, 999)
+            parent_tactic_orders.append(order)
+
+    # Calculate the minimum tactic order for this technique (earliest stage)
+    min_tactic_order = min(parent_tactic_orders) if parent_tactic_orders else 999
 
     tx.run(
         """
