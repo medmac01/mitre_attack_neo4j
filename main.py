@@ -55,19 +55,28 @@ def merge_technique(tx, obj):
     tx.run(
         """
         MERGE (t:Technique {stix_id: $stix_id})
-        ON CREATE SET t.mitre_id    = $mitre_id,
-                      t.name        = $name,
-                      t.description = $description,
-                      t.platforms   = $platforms
-        ON MATCH SET  t.name        = $name, 
-                      t.description = $description,
-                      t.platforms   = $platforms
+        ON CREATE SET t.mitre_id           = $mitre_id,
+                      t.name               = $name,
+                      t.description        = $description,
+                      t.platforms          = $platforms,
+                      t.parent_tactic_id   = $parent_tactic_ids,
+                      t.tactic_orders      = $parent_tactic_orders,
+                      t.min_tactic_order   = $min_tactic_order
+        ON MATCH SET  t.name               = $name, 
+                      t.description        = $description,
+                      t.platforms          = $platforms,
+                      t.parent_tactic_id   = $parent_tactic_ids,
+                      t.tactic_orders      = $parent_tactic_orders,
+                      t.min_tactic_order   = $min_tactic_order
         """,
         stix_id=stix_id,
         mitre_id=mitre_id,
         name=name,
         description=description,
-        platforms=platforms
+        platforms=platforms,
+        parent_tactic_ids=parent_tactic_ids,
+        parent_tactic_orders=parent_tactic_orders,
+        min_tactic_order=min_tactic_order
     )
 
     # Link Technique → Tactic based on kill_chain_phases
@@ -191,22 +200,29 @@ def merge_tactic(tx, obj):
     # but if they do (rarely), extract it. Otherwise leave blank.
     mitre_id = extract_mitre_id(obj)
 
+    # Get the kill chain order for this tactic
+    tactic_order_map = get_tactic_kill_chain_order()
+    kill_chain_order = tactic_order_map.get(shortname, 999)
+
     tx.run(
         """
         MERGE (ta:Tactic {stix_id: $stix_id})
-        ON CREATE SET ta.mitre_id    = $mitre_id,
-                      ta.name        = $name,
-                      ta.shortname   = $shortname,
-                      ta.description = $description
-        ON MATCH SET  ta.name        = $name,
-                      ta.shortname   = $shortname,
-                      ta.description = $description
+        ON CREATE SET ta.mitre_id         = $mitre_id,
+                      ta.name             = $name,
+                      ta.shortname        = $shortname,
+                      ta.description      = $description,
+                      ta.kill_chain_order = $kill_chain_order
+        ON MATCH SET  ta.name             = $name,
+                      ta.shortname        = $shortname,
+                      ta.description      = $description,
+                      ta.kill_chain_order = $kill_chain_order
         """,
         stix_id=stix_id,
         mitre_id=mitre_id,
         name=name,
         shortname=shortname,
-        description=description
+        description=description,
+        kill_chain_order=kill_chain_order
     )
 
 def merge_campaign(tx, obj):
@@ -376,6 +392,28 @@ def merge_stix_relationship(tx, rel):
             """,
             src_ref=src_ref, tgt_ref=tgt_ref
         )
+
+def get_tactic_kill_chain_order():
+    """
+    Returns a dictionary mapping MITRE ATT&CK tactic shortnames to their order in the kill chain.
+    Lower numbers indicate earlier stages in the attack lifecycle.
+    """
+    return {
+        "reconnaissance": 1,
+        "resource-development": 2,
+        "initial-access": 3,
+        "execution": 4,
+        "persistence": 5,
+        "privilege-escalation": 6,
+        "defense-evasion": 7,
+        "credential-access": 8,
+        "discovery": 9,
+        "lateral-movement": 10,
+        "collection": 11,
+        "command-and-control": 12,
+        "exfiltration": 13,
+        "impact": 14
+    }
 
 def load_and_ingest_stix():
     """
